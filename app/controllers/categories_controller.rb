@@ -4,8 +4,44 @@ class CategoriesController < ApplicationController
 
   # GET /categories
   def index
-    @categories = Category.all
-    render json: @categories, status: :ok
+    # Verifica se a requisição solicita paginação
+    if params[:pagination].present?
+      if params[:pagination] == "true"
+        is_paginated_data_request = true
+      else
+        is_paginated_data_request = false
+      end
+    else
+      is_paginated_data_request = false
+    end
+
+    # Constrói a consulta do ActiveRecord
+    categories_query = Category.all
+
+    if is_paginated_data_request
+      # Aplica paginação antes da transformação para JSON
+      paginated_categories = paginate(categories_query)
+
+      # Converte os dados paginados para JSON
+      categories_data = paginated_categories[:data].as_json(
+        include: {
+          items: { only: [ :id, :name, :code ] }
+        },
+      )
+
+      # Retorna os dados paginados com metadados
+      render json: { categories: categories_data, meta: paginated_categories[:meta] }, status: :ok
+    else
+      # Converte todos os setores para JSON sem paginação
+      categories_data = categories_query.as_json(
+        include: {
+          items: { only: [ :id, :name, :code ] }
+        },
+      )
+
+      # Retorna os dados completos
+      render json: { categories: categories_data }, status: :ok
+    end
   end
 
   # GET /categories/{categoryname}

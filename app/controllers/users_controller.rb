@@ -4,8 +4,37 @@ class UsersController < ApplicationController
 
   # GET /users
   def index
-    @users = User.all
-    render json: @users, status: :ok
+    # puts "params[:pagination] >>> #{params[:pagination].class}"
+
+    if params[:pagination].present?
+      if params[:pagination] == "true"
+        is_paginated_data_request = true
+      else
+        is_paginated_data_request = false
+      end
+    else
+      is_paginated_data_request = false
+    end
+
+    # Aplicar paginação diretamente em User (ActiveRecord::Relation)
+    users_query = User.all
+
+    if is_paginated_data_request
+      paginated_users = paginate(users_query)
+      # Transformar os usuários paginados após aplicar a paginação
+      filtered_users = paginated_users[:data].map do |user|
+        user.attributes.except("password_digest")
+      end
+
+      render json: { users: filtered_users, meta: paginated_users[:meta] }, status: :ok
+    else
+      # Transformar todos os usuários sem aplicar paginação
+      filtered_users = users_query.map do |user|
+        user.attributes.except("password_digest")
+      end
+
+      render json: { users: filtered_users }, status: :ok
+    end
   end
 
   # GET /users/{username}

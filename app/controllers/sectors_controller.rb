@@ -4,18 +4,54 @@ class SectorsController < ApplicationController
 
   # GET /sectors
   def index
-    @sectors = Sector.includes(categories: :items) # Eager loading para evitar consultas N+1
+    # Verifica se a requisição solicita paginação
+    if params[:pagination].present?
+      if params[:pagination] == "true"
+        is_paginated_data_request = true
+      else
+        is_paginated_data_request = false
+      end
+    else
+      is_paginated_data_request = false
+    end
 
-    render json: @sectors.as_json(
-      include: {
-        categories: {
-          include: { items: { only: [ :id, :name, :code ] } }, # Inclui itens e seleciona os atributos desejados
-          only: [ :id, :name ] # Atributos das categorias
-        }
-      },
-      only: [ :id, :name ] # Atributos dos setores
-    ), status: :ok
+    # Constrói a consulta do ActiveRecord
+    sectors_query = Sector.includes(categories: :items)
+
+    if is_paginated_data_request
+      # Aplica paginação antes da transformação para JSON
+      paginated_sectors = paginate(sectors_query)
+
+      # Converte os dados paginados para JSON
+      sectors_data = paginated_sectors[:data].as_json(
+        include: {
+          categories: {
+            include: { items: { only: [ :id, :name, :code ] } },
+            only: [ :id, :name ]
+          }
+        },
+        only: [ :id, :name ]
+      )
+
+      # Retorna os dados paginados com metadados
+      render json: { sectors: sectors_data, meta: paginated_sectors[:meta] }, status: :ok
+    else
+      # Converte todos os setores para JSON sem paginação
+      sectors_data = sectors_query.as_json(
+        include: {
+          categories: {
+            include: { items: { only: [ :id, :name, :code ] } },
+            only: [ :id, :name ]
+          }
+        },
+        only: [ :id, :name ]
+      )
+
+      # Retorna os dados completos
+      render json: { sectors: sectors_data }, status: :ok
+    end
   end
+
 
   # GET /sectors/{sectorname}
   def show

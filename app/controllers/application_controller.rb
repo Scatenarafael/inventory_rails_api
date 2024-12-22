@@ -15,4 +15,26 @@ class ApplicationController < ActionController::API
       render json: { errors: e.message }, status: :unauthorized
     end
   end
+
+  private
+
+  # Método para paginar qualquer coleção
+  def paginate(collection)
+    paginated = collection.page(params[:page]).per(params[:per_page])
+    {
+      data: paginated,
+      meta: pagination_meta(paginated)
+    }
+  end
+
+  # Método para gerar metadados de paginação
+  def pagination_meta(scope)
+    {
+      current_page: scope.current_page,
+      next_page: scope.next_page,
+      prev_page: scope.prev_page,
+      total_pages: scope.total_pages,
+      total_count: scope.total_count
+    }
+  end
 end
